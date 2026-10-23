@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>docqa – Hỏi đáp tài liệu</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <script src="/static/theme-init.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-view="chat">
+  <a class="skip-link" href="#composer-input">Bỏ qua tới ô nhập câu hỏi</a>
+
+  <header class="topbar">
+    <button id="drawer-btn" class="icon-btn only-mobile" type="button" aria-label="Mở ngăn tài liệu" aria-controls="sidebar" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    </button>
+    <div class="brand">
+      <span class="brand-name">docqa</span>
+      <span class="brand-sub">Hỏi đáp tài liệu · chạy trên máy bạn</span>
+    </div>
+    <div class="topbar-right">
+      <span id="model-badge" class="badge" title="Model đang dùng để trả lời"></span>
+      <button id="panel-toggle" class="icon-btn only-desktop" type="button" aria-label="Ẩn bảng nguồn" aria-controls="panel" aria-expanded="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 16.5v.01"/><path d="M10.3 3.9 2.6 17.3A2 2 0 0 0 4.3 20.3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <span id="banner-text"></span>
+    <code id="banner-hint"></code>
+    <button id="banner-retry" class="btn btn-small" type="button">Kiểm tra lại</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <!-- Cột trái: tài liệu -->
+    <aside id="sidebar" class="sidebar" aria-label="Tài liệu">
+      <div class="drawer-head only-mobile">
+        <h2 class="drawer-title">Tài liệu</h2>
+        <button id="drawer-close" class="icon-btn" type="button" aria-label="Đóng ngăn tài liệu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <section class="upload" aria-label="Nạp tài liệu">
+        <input type="file" id="file-input" class="visually-hidden" tabindex="-1" aria-hidden="true"
+               accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown">
+        <div id="dropzone" class="dropzone">
+          <button id="dz-button" class="dz-inner" type="button" aria-describedby="dz-formats">
+            <svg class="dz-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14.5v3A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-3"/></svg>
+            <span class="dz-title">Kéo thả tài liệu vào đây</span>
+            <span class="dz-sub">hoặc <u>bấm để chọn file</u></span>
+            <span id="dz-formats" class="dz-formats">PDF, Word (.docx), .txt, .md · tối đa <span class="max-mb">50</span> MB</span>
+          </button>
+        </div>
+        <button id="add-file-btn" class="btn btn-ghost btn-block add-file" type="button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Thêm file
+        </button>
+        <div id="dz-error" class="dz-error" role="alert" hidden></div>
+
+        <div id="ingest" class="ingest" hidden>
+          <p class="ingest-file" id="ingest-file"></p>
+          <ol class="steps" aria-label="Tiến độ nạp file">
+            <li data-step="reading"><span class="step-dot" aria-hidden="true"></span><span>Đọc file</span></li>
+            <li data-step="chunking"><span class="step-dot" aria-hidden="true"></span><span>Chia đoạn</span></li>
+            <li data-step="embedding"><span class="step-dot" aria-hidden="true"></span><span>Tạo vector <span id="embed-count" class="tabular"></span></span></li>
+          </ol>
+          <div class="progress" role="progressbar" aria-label="Tạo vector" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <p id="progress-text" class="small muted" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="doc-list" class="doc-list" aria-label="Tài liệu đã nạp"></section>
+
+      <section id="stats" class="stats" aria-label="Thống kê" hidden>
+        <h3 class="section-label">Thống kê</h3>
+        <dl class="stats-grid">
+          <div><dt>Đoạn</dt><dd id="st-chunks" class="tabular">0</dd></div>
+          <div><dt>Số chiều</dt><dd id="st-dim" class="tabular">0</dd></div>
+          <div><dt>Token ≈</dt><dd id="st-tokens" class="tabular">0</dd></div>
+        </dl>
+        <p id="st-dup" class="small muted"></p>
+      </section>
+
+      <div class="sidebar-foot">
+        <button id="clear-btn" class="btn btn-danger btn-block" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12"/></svg>
+          Xóa tài liệu &amp; lịch sử
+        </button>
+        <button id="theme-btn" class="btn btn-ghost btn-block" type="button" aria-label="Đổi giao diện sáng hoặc tối">
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>
+          <span id="theme-label">Giao diện tối</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Giữa: chat -->
+    <main id="chat" class="chat" aria-label="Hỏi đáp">
+      <div id="scroller" class="scroller">
+        <div id="empty" class="empty"></div>
+        <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Hội thoại"></div>
+      </div>
+      <form id="composer" class="composer" autocomplete="off">
+        <div class="composer-box">
+          <label for="composer-input" class="visually-hidden">Câu hỏi về tài liệu</label>
+          <textarea id="composer-input" rows="1" placeholder="Hỏi về nội dung tài liệu…" enterkeyhint="send"></textarea>
+          <button id="send-btn" class="btn btn-primary send-btn" type="submit" aria-label="Gửi câu hỏi">
+            <svg class="i-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+            <svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+          </button>
+        </div>
+        <p class="composer-note"><kbd>Enter</kbd> gửi · <kbd>Shift</kbd>+<kbd>Enter</kbd> xuống dòng · Chỉ trả lời dựa trên tài liệu, dữ liệu không rời khỏi máy</p>
+      </form>
+    </main>
+
+    <!-- Phải: nguồn & bản đồ -->
+    <aside id="panel" class="panel" aria-label="Nguồn và bản đồ vector">
+      <div class="tabs" role="tablist" aria-label="Bảng phụ">
+        <button role="tab" type="button" id="tab-sources" aria-controls="pane-sources" aria-selected="true">Nguồn <span id="src-count" class="tab-count"></span></button>
+        <button role="tab" type="button" id="tab-map" aria-controls="pane-map" aria-selected="false" tabindex="-1">Bản đồ vector</button>
+      </div>
+
+      <section id="pane-sources" class="pane" role="tabpanel" aria-labelledby="tab-sources" tabindex="0">
+        <p id="sources-caption" class="pane-caption"></p>
+        <div id="sources-list" class="sources-list"></div>
+      </section>
+
+      <section id="pane-map" class="pane" role="tabpanel" aria-labelledby="tab-map" hidden>
+        <div class="map-wrap" id="map-wrap">
+          <canvas id="map" tabindex="0" role="img" aria-label="Bản đồ vector 2D của các đoạn. Dùng phím mũi tên trái phải để duyệt từng đoạn." aria-describedby="map-help"></canvas>
+          <div id="map-tip" class="map-tip" hidden></div>
+          <div class="map-tools">
+            <button id="map-zoom-in" class="icon-btn icon-btn-sm" type="button" aria-label="Phóng to"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+            <button id="map-zoom-out" class="icon-btn icon-btn-sm" type="button" aria-label="Thu nhỏ"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+            <button id="map-reset" class="btn btn-small" type="button">Đặt lại</button>
+          </div>
+          <p id="map-empty" class="map-empty">Nạp tài liệu để xem bản đồ.</p>
+        </div>
+        <div class="legend" aria-label="Chú giải">
+          <div class="legend-row"><span class="legend-pos"><span class="legend-ramp" aria-hidden="true"></span><span class="legend-ends"><span>Đầu tài liệu</span><span>Cuối tài liệu</span></span></span><span class="muted">màu chấm = vị trí đoạn</span></div>
+          <div class="legend-row legend-keys">
+            <span><svg class="legend-star" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.4 5.2 5.7.6-4.3 3.8 1.2 5.6L10 14.1 5 17l1.2-5.6L1.9 7.6l5.7-.6z"/></svg>Câu hỏi</span>
+            <span><span class="legend-ring" aria-hidden="true"></span>Đoạn được truy xuất</span>
+            <span><span class="legend-line" aria-hidden="true"></span>Càng đậm càng giống</span>
+          </div>
+        </div>
+        <p id="map-stats" class="small muted map-stats"></p>
+        <p id="map-help" class="small muted">Rê chuột để xem đoạn, kéo để di chuyển, cuộn để phóng to. Bàn phím: ← → chọn đoạn, + − phóng to, 0 đặt lại.</p>
+        <div id="map-detail" class="map-detail" hidden></div>
+        <details class="map-list-wrap">
+          <summary>Danh sách đoạn (thay thế cho bản đồ)</summary>
+          <ol id="map-list" class="map-list"></ol>
+        </details>
+      </section>
+    </aside>
+  </div>
+
+  <nav class="bottom-tabs only-mobile" aria-label="Chế độ xem">
+    <button type="button" data-view="chat" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>Chat</button>
+    <button type="button" data-view="sources">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M9 11h6M9 15h6"/></svg>Nguồn</button>
+    <button type="button" data-view="map">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="8" r="1.6"/><circle cx="16" cy="6" r="1.6"/><circle cx="12" cy="13" r="1.6"/><circle cx="6" cy="17" r="1.6"/><circle cx="18" cy="16" r="1.6"/></svg>Bản đồ</button>
+  </nav>
+
+  <div id="backdrop" class="backdrop" hidden></div>
+  <div id="drop-overlay" class="drop-overlay" hidden><div>Thả file để nạp vào docqa</div></div>
+
+  <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-body"></p>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn btn-ghost" type="submit">Hủy</button>
+        <button value="ok" id="confirm-ok" class="btn btn-danger-solid" type="submit">Xóa</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

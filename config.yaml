@@ -1,0 +1,42 @@
+# Cấu hình docqa. Mọi khóa đều có thể ghi đè bằng biến môi trường DOCQA_<TÊN_KHÓA_IN_HOA>
+# Ví dụ: DOCQA_LLM_MODEL=qwen2.5:7b  hoặc  DOCQA_PORT=8080
+
+# --- Server ---
+host: 127.0.0.1          # chỉ nghe trên máy này; đổi thành 0.0.0.0 nếu thật sự muốn mở ra mạng LAN
+port: 8000
+
+# --- Ollama ---
+ollama_url: http://localhost:11434
+embed_model: bge-m3
+llm_model: qwen2.5:3b     # đổi sang qwen2.5:7b nếu máy đủ khỏe (chậm hơn ~2-3 lần trên CPU)
+num_ctx: 4096             # cửa sổ ngữ cảnh gửi cho LLM
+num_gpu: 0                # 0 = chỉ dùng CPU (khuyên dùng cho laptop: GPU rời nhỏ/driver NVK/iGPU thường CHẬM hơn
+                          #     và hay hết bộ nhớ). -1 = để Ollama tự quyết. Số dương = số layer đưa lên GPU.
+temperature: 0.2
+
+# Thời gian chờ (giây)
+connect_timeout: 5
+embed_timeout: 180        # giây chờ cho mỗi batch; quá giờ sẽ tự chia nhỏ batch và thử lại
+llm_timeout: 240          # thời gian chờ tối đa giữa hai token (CPU chậm nên để rộng)
+llm_total_timeout: 900    # tổng thời gian tối đa cho một câu trả lời
+
+# --- Nạp tài liệu ---
+max_upload_mb: 50
+max_files: 5              # số file tối đa trong một phiên
+max_chunks: 4000          # chặn tài liệu quá dài (embedding trên CPU sẽ rất lâu)
+chunk_size: 700           # số ký tự mục tiêu mỗi đoạn (600-800)
+chunk_overlap: 100        # số ký tự gối nhau giữa hai đoạn
+embed_batch_size: 4       # Ollama xử lý tuần tự trên CPU: batch nhỏ không chậm hơn nhưng an toàn hơn khi máy bận
+
+# --- Hỏi đáp ---
+top_k: 5
+min_similarity: 0.40      # dưới ngưỡng này coi như tài liệu không liên quan, không gọi LLM
+history_turns: 4          # số lượt hỏi-đáp gần nhất được nhớ
+rewrite_followups: true   # viết lại câu hỏi nối tiếp thành câu độc lập trước khi tìm
+suggestions: true         # sinh 3 câu hỏi gợi ý sau khi nạp
+duplicate_threshold: 0.95 # cosine >= ngưỡng này coi là đoạn gần trùng lặp
+
+# --- Dữ liệu phiên ---
+data_dir: data
+session_ttl_days: 7       # tự xóa phiên không dùng quá N ngày
+log_level: INFO
