@@ -168,7 +168,7 @@ class OllamaClient:
         options = {"num_ctx": self.s.num_ctx, "temperature": self.s.temperature, **self._gpu_opts().get("options", {})}
         options.update({k: v for k, v in opts.items() if k not in ("format",)})
         payload = {"model": self.s.llm_model, "messages": messages, "stream": stream, "options": options,
-                   "keep_alive": "30m"}
+                   "keep_alive": "30m", "think": self.s.think}
         if "format" in opts:
             payload["format"] = opts["format"]
         return payload

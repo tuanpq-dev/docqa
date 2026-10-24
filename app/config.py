@@ -17,6 +17,7 @@ class Settings:
     ollama_url: str = "http://localhost:11434"
     embed_model: str = "bge-m3"
     llm_model: str = "qwen2.5:3b"
+    think: bool = False
     num_ctx: int = 4096
     num_gpu: int = 0
     temperature: float = 0.2

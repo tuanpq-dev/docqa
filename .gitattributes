@@ -1,0 +1,3 @@
+# Script shell phải giữ LF, kể cả khi checkout trên Windows (core.autocrlf=true)
+*.sh text eol=lf
+*.bat text eol=crlf
