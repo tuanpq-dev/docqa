@@ -22,7 +22,7 @@ llm_timeout: 240          # thời gian chờ tối đa giữa hai token (CPU ch
 llm_total_timeout: 900    # tổng thời gian tối đa cho một câu trả lời
 
 # --- Nạp tài liệu ---
-max_upload_mb: 50
+max_upload_mb: 100
 max_files: 5              # số file tối đa trong một phiên
 max_chunks: 4000          # chặn tài liệu quá dài (embedding trên CPU sẽ rất lâu)
 chunk_size: 700           # số ký tự mục tiêu mỗi đoạn (600-800)

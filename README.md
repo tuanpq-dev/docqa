@@ -192,7 +192,7 @@ Các khóa hay dùng:
 | `history_turns` | `4` | Số lượt hỏi–đáp gần nhất được nhớ |
 | `rewrite_followups` | `true` | Viết lại câu hỏi nối tiếp thành câu độc lập trước khi tìm |
 | `suggestions` | `true` | Sinh 3 câu hỏi gợi ý sau khi nạp |
-| `max_upload_mb` | `50` | Giới hạn kích thước file |
+| `max_upload_mb` | `100` | Giới hạn kích thước file |
 | `max_files` | `5` | Số file tối đa mỗi phiên |
 | `session_ttl_days` | `7` | Tự xóa phiên không dùng quá N ngày |
 | `llm_timeout` / `llm_total_timeout` | `240` / `900` | Giây chờ tối đa giữa hai token / cho cả câu trả lời |
@@ -235,7 +235,7 @@ Mọi request cần header `X-Session-Id` (8–64 ký tự `A-Z a-z 0-9 _ -`).
 | Banner "Ollama chưa chạy" | Mở app Ollama, hoặc chạy `ollama serve`, rồi bấm **Kiểm tra lại** |
 | Banner "Chưa tải đủ model" | Chạy lệnh hiện trên banner, ví dụ `ollama pull bge-m3` |
 | "PDF này có vẻ là bản scan" | docqa không có OCR. Chạy OCR trước (`ocrmypdf in.pdf out.pdf`, Adobe Acrobat, hoặc mở bằng Google Docs) rồi tải lại |
-| "File quá lớn" | Giới hạn 50 MB (`max_upload_mb`). Tách file thành phần nhỏ hơn |
+| "File quá lớn" | Giới hạn 100 MB (`max_upload_mb`). Tách file thành phần nhỏ hơn |
 | "File bị hỏng" / "được bảo vệ bằng mật khẩu" | Mở file rồi lưu/xuất lại (In ra PDF mới) |
 | File `.doc` (Word cũ) | Lưu lại thành `.docx` hoặc `.pdf` |
 | Tạo vector/trả lời cực chậm, câu trả lời rỗng, log Ollama có `ErrorOutOfDeviceMemory` | Ollama đang đẩy model lên GPU yếu (card rời 2 GB, driver NVK/nouveau, iGPU qua Vulkan). docqa mặc định `num_gpu: 0` để chạy CPU – kiểm tra bạn không đổi giá trị này. Nếu có GPU mạnh (NVIDIA driver chính hãng, ≥ 6 GB) thì đặt `num_gpu: -1` |
@@ -247,7 +247,7 @@ Mọi request cần header `X-Session-Id` (8–64 ký tự `A-Z a-z 0-9 _ -`).
 
 ## 7. Quyết định thiết kế (chỗ đề bài để ngỏ)
 
-- **Upload gửi file thô** (không dùng multipart) và trả tiến độ bằng SSE ngay trong cùng request. Server đếm byte khi nhận và cắt ngay khi vượt 50 MB.
+- **Upload gửi file thô** (không dùng multipart) và trả tiến độ bằng SSE ngay trong cùng request. Server đếm byte khi nhận và cắt ngay khi vượt `max_upload_mb` (mặc định 100 MB).
 - **Nhiều file**: tối đa 5 file một phiên; mỗi thẻ tài liệu có nút **Thay file** và **Gỡ**. Gỡ tài liệu cuối cùng thì lịch sử chat cũng bị xóa (vì chat gắn với tài liệu).
 - **Word (.docx) không có số trang** (Word chỉ tính trang lúc hiển thị), nên nguồn từ .docx ghi số thứ tự đoạn thay cho số trang. Bảng trong Word được giữ dưới dạng `ô | ô`.
 - **Đoạn văn trong PDF** được đoán từ độ dài dòng (PDF thường không có dòng trống giữa các đoạn).
