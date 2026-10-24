@@ -8,7 +8,8 @@ port: 8000
 # --- Ollama ---
 ollama_url: http://localhost:11434
 embed_model: bge-m3
-llm_model: qwen2.5:3b     # đổi sang qwen2.5:7b nếu máy đủ khỏe (chậm hơn ~2-3 lần trên CPU)
+llm_model: qwen3.5:4b     # nhẹ hơn: qwen2.5:3b; mạnh hơn nếu máy đủ khỏe: qwen2.5:7b (chậm hơn ~2-3 lần trên CPU)
+think: false              # tắt chế độ "suy nghĩ" của các model Qwen3.x (bật lên trả lời chậm hơn nhiều trên CPU)
 num_ctx: 4096             # cửa sổ ngữ cảnh gửi cho LLM
 num_gpu: 0                # 0 = chỉ dùng CPU (khuyên dùng cho laptop: GPU rời nhỏ/driver NVK/iGPU thường CHẬM hơn
                           #     và hay hết bộ nhớ). -1 = để Ollama tự quyết. Số dương = số layer đưa lên GPU.
