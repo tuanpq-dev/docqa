@@ -1,0 +1,80 @@
+# docqa + Ollama chạy trên một máy luôn bật, mở ra internet qua Tailscale Funnel (miễn phí).
+#
+#   docker compose up -d                      # chỉ dùng trên máy này: http://localhost:8000
+#   docker compose --profile public up -d     # thêm Caddy (hỏi mật khẩu) ở http://127.0.0.1:8080
+#   sudo tailscale funnel --bg 8080           # mở cổng 8080 ra internet: https://<tên-máy>.<tailnet>.ts.net
+#
+# Lần đầu sẽ tự tải model (~4.5 GB), xem tiến độ: docker compose logs -f ollama-pull
+
+x-models: &models
+  DOCQA_LLM_MODEL: ${DOCQA_LLM_MODEL:-qwen3.5:4b}
+  DOCQA_EMBED_MODEL: ${DOCQA_EMBED_MODEL:-bge-m3}
+
+services:
+  ollama:
+    image: ollama/ollama:0.40.9
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h        # giữ model trong RAM, khỏi nạp lại mỗi câu hỏi
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # Tải model còn thiếu rồi thoát (đã có thì xong ngay)
+  ollama-pull:
+    image: ollama/ollama:0.40.9
+    environment:
+      <<: *models
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull \"$$DOCQA_EMBED_MODEL\" && ollama pull \"$$DOCQA_LLM_MODEL\""]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  docqa:
+    build: .
+    image: docqa:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *models
+      DOCQA_OLLAMA_URL: http://ollama:11434
+      # Cố định trong container, không để .env (dùng cho run.sh) ghi đè
+      DOCQA_HOST: 0.0.0.0
+      DOCQA_PORT: "8000"
+      DOCQA_DATA_DIR: /data
+    volumes:
+      - docqa-data:/data
+    ports:
+      - "127.0.0.1:${DOCQA_HOST_PORT:-8000}:8000"   # chỉ mở cho chính máy này; người ngoài vào qua Caddy
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+
+  # Hỏi tài khoản/mật khẩu (basic auth) trước khi vào docqa; Tailscale Funnel trỏ vào đây
+  caddy:
+    image: caddy:2.10.2
+    profiles: ["public"]
+    restart: unless-stopped
+    environment:
+      DOCQA_AUTH_USER: ${DOCQA_AUTH_USER:?Đặt DOCQA_AUTH_USER trong .env}
+      DOCQA_AUTH_HASH: ${DOCQA_AUTH_HASH:?Đặt DOCQA_AUTH_HASH trong .env}
+    ports:
+      - "127.0.0.1:${DOCQA_PUBLIC_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - docqa
+
+volumes:
+  ollama-models:
+  docqa-data:
+  caddy-data:

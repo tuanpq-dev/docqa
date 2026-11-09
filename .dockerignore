@@ -1,0 +1,37 @@
+# Git & editor
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+*.swp
+
+# Python
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Dữ liệu & bí mật (không đóng gói vào image)
+data
+.env
+.docqa-version
+
+# Không cần khi chạy trong container
+tests
+scripts
+requirements-dev.txt
+install.sh
+install.ps1
+run.sh
+run.bat
+README.md
+
+# Docker
+Dockerfile
+.dockerignore
