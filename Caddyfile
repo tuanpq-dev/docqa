@@ -1,0 +1,10 @@
+# Đứng giữa Tailscale Funnel và docqa: hỏi tài khoản/mật khẩu trước khi cho vào.
+# Tài khoản lấy từ .env: DOCQA_AUTH_USER và DOCQA_AUTH_HASH (bcrypt).
+:80 {
+	basic_auth {
+		{$DOCQA_AUTH_USER} {$DOCQA_AUTH_HASH}
+	}
+	reverse_proxy docqa:8000 {
+		flush_interval -1  # đẩy câu trả lời (SSE) tới trình duyệt ngay, không gom lại
+	}
+}
