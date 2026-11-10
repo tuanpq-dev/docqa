@@ -62,29 +62,16 @@ Với dòng lệnh một dòng, bật chế độ thử bằng biến môi trư�
 | GPU | **Không bắt buộc** – mặc định chạy CPU (`num_gpu: 0`) | GPU NVIDIA ≥ 6 GB thì đặt `num_gpu: -1` trong `config.yaml` |
 | Mạng | Cần khi cài và tải model; dùng xong thì chạy offline | |
 
-**Máy RAM dưới 12 GB** (ví dụ laptop 8 GB, i5 đời 10): trình cài tự dùng `qwen2.5:3b` (~1,9 GB, nhẹ hơn khoảng 1,4 GB RAM khi chạy) thay cho `qwen3.5:4b`, và ghi `DOCQA_LLM_MODEL=qwen2.5:3b` vào `.env` để lần sau giữ nguyên. Chỉ áp dụng khi bạn chưa tự chọn model (`DOCQA_MODEL`, `.env` hoặc `config.yaml`). Tắt bằng `DOCQA_AUTO_MODEL=0`; muốn quay lại `qwen3.5:4b` thì xóa dòng đó trong `.env`. Với máy 8 GB, chỉ RAM là giới hạn thật: CPU i5 đời 10 chạy được cả hai model, `qwen2.5:3b` chỉ nhanh hơn chút.
-
 ### Tùy chọn khi cài (biến môi trường)
 
 | Biến | Ý nghĩa |
 |---|---|
 | `DOCQA_DIR` | Thư mục cài (mặc định `%USERPROFILE%\docqa`) |
-| `DOCQA_MODEL` | Model trả lời, ví dụ `qwen2.5:7b` (ghi vào `.env` thành `DOCQA_LLM_MODEL`, tên khóa app đọc) |
 | `DOCQA_EMBED_MODEL` | Model tạo vector (đổi thì phải nạp lại tài liệu) |
-| `DOCQA_AUTO_MODEL=0` | Không tự chuyển sang `qwen2.5:3b` khi máy ít RAM |
-| `DOCQA_RAM_GB` | Giả lập dung lượng RAM (GB) để thử logic chọn model, ví dụ `8` |
 | `DOCQA_DRYRUN=1` | Chỉ in ra những việc sẽ làm (giống `-DryRun`) |
 | `DOCQA_NO_UPDATE=1` | Không tải lại mã nguồn khi đã cài |
 | `DOCQA_OLLAMA_URL` | Dùng Ollama ở máy khác (khi đó không cài Ollama trên máy này) |
 | `DOCQA_REPO`, `DOCQA_BRANCH` | Cài từ fork / nhánh khác (`chu/repo` hoặc URL GitHub) |
-
-### Đổi model
-
-```powershell
-$env:DOCQA_MODEL='qwen2.5:7b'; irm https://raw.githubusercontent.com/tuanpq-dev/docqa/main/install.ps1 | iex
-```
-
-Script ghi `DOCQA_LLM_MODEL=qwen2.5:7b` vào `.env` và tải model mới (model cũ vẫn giữ). Hoặc sửa `llm_model` trong `%USERPROFILE%\docqa\config.yaml` rồi chạy `run.bat` – nó cũng tự tải model còn thiếu. Lưu ý `.env` không hỗ trợ chú thích `#` ở cuối dòng. Xem thêm mục 4.
 
 ### Gỡ cài đặt
 
@@ -125,7 +112,7 @@ bash install.sh --dry-run
 bash install.sh
 ```
 
-Các biến môi trường giống bản Windows (`DOCQA_DIR`, `DOCQA_MODEL`, `DOCQA_EMBED_MODEL`, `DOCQA_AUTO_MODEL`, `DOCQA_DRYRUN`, `DOCQA_NO_UPDATE`, `DOCQA_OLLAMA_URL`, `DOCQA_REPO`, `DOCQA_BRANCH`), ví dụ `curl -fsSL …/install.sh | DOCQA_MODEL=qwen2.5:7b bash`. Cấu hình máy như bảng ở mục 1; Linux cần Python ≥ 3.10 (Ubuntu 22.04+, Debian 12+, Fedora, Arch – Ubuntu 20.04 / Debian 11 phải tự cài Python mới hơn trước).
+Các biến môi trường giống bản Windows (`DOCQA_DIR`, `DOCQA_EMBED_MODEL`, `DOCQA_DRYRUN`, `DOCQA_NO_UPDATE`, `DOCQA_OLLAMA_URL`, `DOCQA_REPO`, `DOCQA_BRANCH`), ví dụ `curl -fsSL …/install.sh | DOCQA_DIR=~/apps/docqa bash`. Cấu hình máy như bảng ở mục 1; Linux cần Python ≥ 3.10 (Ubuntu 22.04+, Debian 12+, Fedora, Arch – Ubuntu 20.04 / Debian 11 phải tự cài Python mới hơn trước).
 
 Gỡ cài đặt: `rm -rf ~/docqa`, `ollama rm bge-m3 qwen3.5:4b`, rồi gỡ Ollama nếu không dùng nữa (macOS: `brew uninstall ollama` hoặc xóa `Ollama.app` và `~/.ollama`; Linux: theo [hướng dẫn chính thức](https://github.com/ollama/ollama/blob/main/docs/linux.md#uninstall)).
 
@@ -165,25 +152,16 @@ ollama pull bge-m3 && ollama pull qwen3.5:4b
 python -m app.main
 ```
 
-## 4. Đổi model và cấu hình
+## 4. Cấu hình
 
 Mọi cấu hình nằm trong `config.yaml`. Mỗi khóa đều ghi đè được bằng biến môi trường `DOCQA_<TÊN_KHÓA_IN_HOA>` hoặc file `.env` (xem `.env.example`). Thứ tự ưu tiên: biến môi trường > `.env` > `config.yaml`.
-
-Dùng model 7B (trả lời tốt hơn, chậm hơn khoảng 2–3 lần trên CPU):
-
-```bash
-DOCQA_LLM_MODEL=qwen2.5:7b ./run.sh                # macOS / Linux
-set DOCQA_LLM_MODEL=qwen2.5:7b && run.bat          # Windows (cmd)
-```
-
-hoặc sửa `llm_model: qwen2.5:7b` trong `config.yaml`. Script sẽ tự `ollama pull` model mới.
 
 Các khóa hay dùng:
 
 | Khóa | Mặc định | Ý nghĩa |
 |---|---|---|
-| `llm_model` | `qwen3.5:4b` | Model sinh câu trả lời (nhẹ hơn: `qwen2.5:3b`) |
-| `think` | `false` | Bật chế độ "suy nghĩ" của model Qwen3.x (chậm hơn nhiều trên CPU) |
+| `llm_model` | `qwen3.5:4b` | Model sinh câu trả lời |
+| `think` | `false` | Model "suy nghĩ" trước khi trả lời. Trên CPU chậm hơn 5–15 lần mà không đúng hơn rõ rệt; chỉ nên bật khi có GPU |
 | `embed_model` | `bge-m3` | Model tạo vector (đổi model này thì phải nạp lại tài liệu) |
 | `port` / `host` | `8000` / `127.0.0.1` | Server chỉ nghe trên máy này |
 | `top_k` | `5` | Số đoạn được lấy làm ngữ cảnh |
@@ -205,7 +183,7 @@ File ──► đọc (PyMuPDF / python-docx) ──► chuẩn hóa Unicode NFC
 
 Câu hỏi ──► (nếu là câu nối tiếp) LLM viết lại thành câu độc lập
         ──► bge-m3 tạo vector ──► trộn cosine + từ khóa (BM25) ──► điểm cao nhất < ngưỡng? → báo không liên quan
-        ──► prompt "chỉ dùng các đoạn [1]..[k], trích dẫn, không bịa" ──► qwen2.5 stream từng token (SSE)
+        ──► prompt "chỉ dùng các đoạn [1]..[k], trích dẫn, không bịa" ──► qwen3.5 stream từng token (SSE)
 ```
 
 - **Chia đoạn** ưu tiên cắt theo đoạn văn → câu → từ; không bao giờ cắt rời dấu tiếng Việt khỏi chữ. Mỗi đoạn giữ tên file và trang bắt đầu/kết thúc (với PDF).
@@ -239,7 +217,7 @@ Mọi request cần header `X-Session-Id` (8–64 ký tự `A-Z a-z 0-9 _ -`).
 | "File bị hỏng" / "được bảo vệ bằng mật khẩu" | Mở file rồi lưu/xuất lại (In ra PDF mới) |
 | File `.doc` (Word cũ) | Lưu lại thành `.docx` hoặc `.pdf` |
 | Tạo vector/trả lời cực chậm, câu trả lời rỗng, log Ollama có `ErrorOutOfDeviceMemory` | Ollama đang đẩy model lên GPU yếu (card rời 2 GB, driver NVK/nouveau, iGPU qua Vulkan). docqa mặc định `num_gpu: 0` để chạy CPU – kiểm tra bạn không đổi giá trị này. Nếu có GPU mạnh (NVIDIA driver chính hãng, ≥ 6 GB) thì đặt `num_gpu: -1` |
-| Trả lời rất chậm | Bình thường trên CPU: lần đầu Ollama phải nạp model vào RAM (10–30 giây). Dùng model nhẹ hơn (`qwen2.5:3b`), giảm `top_k` xuống 3–4, đóng bớt ứng dụng nặng |
+| Trả lời rất chậm | Bình thường trên CPU: lần đầu Ollama phải nạp model vào RAM (10–30 giây). Kiểm tra `think: false` (bật suy nghĩ chậm hơn nhiều), giảm `top_k` xuống 3–4, đóng bớt ứng dụng nặng |
 | "Tài liệu có vẻ không liên quan" khi câu hỏi đúng chủ đề | Hạ `min_similarity` (ví dụ 0.3) hoặc hỏi bằng từ ngữ có trong tài liệu |
 | Cổng 8000 đang bị dùng | Đặt `DOCQA_PORT=8080` hoặc sửa `port` trong `config.yaml` |
 | Debian/Ubuntu: lỗi tạo venv | `sudo apt install python3-venv` |

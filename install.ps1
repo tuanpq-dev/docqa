@@ -12,7 +12,6 @@
 #
 # Biến môi trường:
 #   DOCQA_DIR             thư mục cài (mặc định %USERPROFILE%\docqa; chạy file nằm trong repo thì dùng chính repo đó)
-#   DOCQA_MODEL           model LLM (ghi vào .env thành DOCQA_LLM_MODEL – tên khóa app đọc)
 #   DOCQA_EMBED_MODEL     model embedding (ghi vào .env)
 #   DOCQA_OLLAMA_URL      dùng Ollama ở máy khác (khi đó không cài Ollama trên máy này)
 #   DOCQA_NO_UPDATE=1     không tải lại mã nguồn khi đã cài
@@ -264,8 +263,6 @@ function Install-Docqa {
   $slug = if ($env:DOCQA_REPO) { $env:DOCQA_REPO -replace '^https?://github\.com/', '' -replace '\.git$', '' -replace '/$', '' } else { 'tuanpq-dev/docqa' }
   $branch = if ($env:DOCQA_BRANCH) { $env:DOCQA_BRANCH } else { 'main' }
   $zipUrl = if ($env:DOCQA_ZIP_URL) { $env:DOCQA_ZIP_URL } else { "https://github.com/$slug/archive/refs/heads/$branch.zip" }
-  # DOCQA_MODEL là tên ngắn cho người dùng; app đọc DOCQA_LLM_MODEL
-  if ($env:DOCQA_MODEL) { $env:DOCQA_LLM_MODEL = $env:DOCQA_MODEL }
 
   if ($script:Dry) { Say 'CHE DO DRY-RUN: chi kiem tra va in ra cac viec se lam, khong cai gi.' }
 
@@ -397,18 +394,6 @@ function Install-Docqa {
       Did "da ghi $key=$val vao .env"
     }
   }
-  # Máy RAM < 12 GB: dùng qwen2.5:3b thay qwen3.5:4b – chỉ khi người dùng chưa tự chọn model
-  # (DOCQA_MODEL, .env hoặc config.yaml). Tắt bằng DOCQA_AUTO_MODEL=0.
-  if (-not $env:DOCQA_LLM_MODEL -and $env:DOCQA_AUTO_MODEL -ne '0') {
-    if ((Test-Path $vpy) -and (Test-Path $helperPy)) {
-      $flags = @($helperPy, 'auto-llm'); if ($script:Dry) { $flags += '--dry-run' }
-      $r = Invoke-Exe $vpy $flags -Capture
-      if ($r.Out) { Say $r.Out.Trim() }
-      # dry-run không ghi .env, nên đặt tạm biến môi trường để các bước sau hiện đúng model sẽ dùng
-      if ($r.Code -eq 10 -and $script:Dry) { $env:DOCQA_LLM_MODEL = 'qwen2.5:3b' }
-    } elseif ($script:Dry) { Dry 'kiem tra RAM: duoi 12 GB thi dung qwen2.5:3b thay qwen3.5:4b' }
-  }
-
   # Đọc cấu hình giống hệt app: config.yaml < .env < biến môi trường DOCQA_*
   $cfg = if ((Test-Path $vpy) -and (Test-Path $helperPy)) { Invoke-Exe $vpy @($helperPy, 'config') -Capture } else { @{ Code = 1; Out = '' } }
   if ($cfg.Code -eq 0) {
@@ -502,7 +487,7 @@ function Install-Docqa {
   Write-Host "    hoac nhap dup run.bat trong thu muc $dir" -ForegroundColor Green
   Write-Host ''
   Say "Trinh duyet se mo http://localhost:$port  (nhan Ctrl+C trong cua so do de dung)."
-  Say "Doi model: dat DOCQA_MODEL roi chay lai lenh cai, hoac sua llm_model trong $dir\config.yaml."
+  Say "Doi cau hinh: sua $dir\config.yaml roi chay lai run.bat."
 }
 
 # Có được phép "exit" không: chạy bằng -File, hoặc là tiến trình powershell riêng chạy -Command (từ cmd).

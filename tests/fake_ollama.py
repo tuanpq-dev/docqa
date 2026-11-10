@@ -21,7 +21,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
 DIM = 1024
-MODELS = ["bge-m3:latest", "qwen2.5:3b"]
+MODELS = ["bge-m3:latest", "qwen3.5:4b"]
 STREAM_DELAY = 0.0
 
 
@@ -81,8 +81,13 @@ def _answer(messages: list[dict]) -> str:
     return "\n".join(lines)
 
 
+CHAT_REQUESTS: list[dict] = []  # các request /api/chat đã nhận, để test kiểm tra tham số
+THINKING = "Câu hỏi hỏi về lượng nước. Mình sẽ tìm trong các đoạn trích."
+
+
 async def chat(req: Request):
     body = await req.json()
+    CHAT_REQUESTS.append(body)
     if body.get("model") not in MODELS and body.get("model") + ":latest" not in MODELS:
         return JSONResponse({"error": f"model '{body.get('model')}' not found"}, status_code=404)
     text = _answer(body.get("messages", []))
@@ -90,6 +95,9 @@ async def chat(req: Request):
         return JSONResponse({"message": {"role": "assistant", "content": text}, "done": True})
 
     async def gen():
+        if body.get("think"):
+            for piece in re.findall(r"\S+\s*", THINKING):
+                yield json.dumps({"message": {"role": "assistant", "content": "", "thinking": piece}, "done": False}) + "\n"
         for piece in re.findall(r"\S+\s*|\s+", text):
             yield json.dumps({"message": {"role": "assistant", "content": piece}, "done": False}) + "\n"
             if STREAM_DELAY:

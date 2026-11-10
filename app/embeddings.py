@@ -169,22 +169,22 @@ class OllamaClient:
             opts["num_thread"] = self.s.num_thread
         return {"options": opts} if opts else {}
 
-    def _chat_payload(self, messages: list[dict], stream: bool, **opts) -> dict:
+    def _chat_payload(self, messages: list[dict], stream: bool, think: bool | None = None, **opts) -> dict:
         options = {"num_ctx": self.s.num_ctx, "temperature": self.s.temperature, **self._gpu_opts().get("options", {})}
         options.update({k: v for k, v in opts.items() if k not in ("format",)})
         payload = {"model": self.s.llm_model, "messages": messages, "stream": stream, "options": options,
-                   "keep_alive": "30m", "think": self.s.think}
+                   "keep_alive": "30m", "think": self.s.think if think is None else think}
         if "format" in opts:
             payload["format"] = opts["format"]
         return payload
 
     async def chat(self, messages: list[dict], timeout: float | None = None, **opts) -> str:
-        """Gọi chat không stream (dùng cho viết lại câu hỏi, câu hỏi gợi ý)."""
+        """Gọi chat không stream (dùng cho viết lại câu hỏi, câu hỏi gợi ý). Luôn tắt suy nghĩ cho các bước phụ này."""
         timeout = timeout or self.s.llm_timeout
         try:
             r = await self.client().post(
                 "/api/chat",
-                json=self._chat_payload(messages, False, **opts),
+                json=self._chat_payload(messages, False, think=False, **opts),
                 timeout=httpx.Timeout(timeout, connect=self.s.connect_timeout),
             )
         except httpx.ConnectError as e:
@@ -196,8 +196,9 @@ class OllamaClient:
         await self._raise_for(r, self.s.llm_model)
         return (r.json().get("message") or {}).get("content", "")
 
-    async def chat_stream(self, messages: list[dict], **opts) -> AsyncIterator[str]:
-        """Stream từng mẩu token. Dừng khi quá llm_total_timeout hoặc không có token trong llm_timeout."""
+    async def chat_stream(self, messages: list[dict], **opts) -> AsyncIterator[tuple[str, str]]:
+        """Stream từng mẩu token dạng (loại, nội dung): "thinking" cho phần suy nghĩ, "text" cho câu trả lời.
+        Dừng khi quá llm_total_timeout hoặc không có token trong llm_timeout."""
         deadline = time.monotonic() + self.s.llm_total_timeout
         try:
             async with self.client().stream(
@@ -222,9 +223,11 @@ class OllamaClient:
                         continue
                     if obj.get("error"):
                         raise OllamaError("ollama_error", "Ollama báo lỗi khi sinh câu trả lời.", str(obj["error"])[:200])
-                    piece = (obj.get("message") or {}).get("content", "")
-                    if piece:
-                        yield piece
+                    msg = obj.get("message") or {}
+                    if msg.get("thinking"):
+                        yield "thinking", msg["thinking"]
+                    if msg.get("content"):
+                        yield "text", msg["content"]
                     if obj.get("done"):
                         break
         except httpx.ConnectError as e:
