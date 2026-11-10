@@ -20,6 +20,7 @@ class Settings:
     think: bool = False
     num_ctx: int = 4096
     num_gpu: int = 0
+    num_thread: int = 0
     temperature: float = 0.2
     connect_timeout: float = 5
     embed_timeout: float = 180

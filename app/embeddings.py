@@ -161,8 +161,13 @@ class OllamaClient:
 
     # ---------- chat ----------
     def _gpu_opts(self) -> dict:
-        """num_gpu=0 ép Ollama chạy CPU; giá trị âm để Ollama tự quyết."""
-        return {"options": {"num_gpu": self.s.num_gpu}} if self.s.num_gpu >= 0 else {}
+        """num_gpu=0 ép Ollama chạy CPU; giá trị âm để Ollama tự quyết. num_thread>0 giới hạn số luồng CPU."""
+        opts = {}
+        if self.s.num_gpu >= 0:
+            opts["num_gpu"] = self.s.num_gpu
+        if self.s.num_thread > 0:
+            opts["num_thread"] = self.s.num_thread
+        return {"options": opts} if opts else {}
 
     def _chat_payload(self, messages: list[dict], stream: bool, **opts) -> dict:
         options = {"num_ctx": self.s.num_ctx, "temperature": self.s.temperature, **self._gpu_opts().get("options", {})}
