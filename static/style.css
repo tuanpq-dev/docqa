@@ -323,6 +323,12 @@ body.panel-collapsed .panel { visibility: hidden; }
 .rewritten em { color: var(--text-2); font-style: normal; }
 .thinking { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 14.5px; padding: 2px 0 6px; }
 .thinking .elapsed { color: var(--muted); font-size: 13px; }
+.reasoning { margin: 0 0 8px; }
+.reasoning-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 2px 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.reasoning-toggle:hover { color: var(--text-2); }
+.reasoning-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .15s; }
+.reasoning-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.reasoning-body { margin-top: 4px; padding: 8px 12px; max-height: 240px; overflow-y: auto; border-left: 2px solid var(--border, currentColor); color: var(--muted); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dots { display: inline-flex; gap: 4px; }
 .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: .3; animation: dot 1.2s infinite ease-in-out; }
 .dots i:nth-child(2) { animation-delay: .15s; }

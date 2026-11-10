@@ -16,8 +16,9 @@ class Settings:
     port: int = 8000
     ollama_url: str = "http://localhost:11434"
     embed_model: str = "bge-m3"
-    llm_model: str = "qwen2.5:3b"
+    llm_model: str = "qwen3.5:4b"
     think: bool = False
+    think_budget: int = 2048
     num_ctx: int = 4096
     num_gpu: int = 0
     num_thread: int = 0

@@ -57,7 +57,7 @@ def ask(c, q, history=None):
 
 def test_health_ok(client):
     h = client.get("/api/health").json()
-    assert h["ok"] and h["ollama"] and h["models"]["bge-m3"] and h["models"]["qwen2.5:3b"]
+    assert h["ok"] and h["ollama"] and h["models"]["bge-m3"] and h["models"]["qwen3.5:4b"]
 
 
 def test_health_ollama_down(tmp_path):
@@ -69,10 +69,10 @@ def test_health_ollama_down(tmp_path):
 
 
 def test_health_missing_model(tmp_path):
-    with make_client(tmp_path, llm_model="qwen2.5:7b") as c:
+    with make_client(tmp_path, llm_model="model-chua-tai:1b") as c:
         h = c.get("/api/health").json()
         assert not h["ok"]
-        assert any(p["code"] == "model_missing" and "ollama pull qwen2.5:7b" in p["hint"] for p in h["problems"])
+        assert any(p["code"] == "model_missing" and "ollama pull model-chua-tai:1b" in p["hint"] for p in h["problems"])
 
 
 def test_upload_progress_and_doc(client, fixtures, tmp_path):
@@ -102,6 +102,32 @@ def test_chat_vietnamese_with_sources(client, fixtures):
     assert "500 đến" in top["text"] and top["page"] <= 2 <= top["page_end"]
     answer = "".join(d["text"] for e, d in ev if e == "token")
     assert "[1]" in answer and "Theo tài liệu" in answer
+
+
+def test_chat_thinking_streams_reasoning_then_answer(tmp_path, fixtures):
+    fake_ollama.CHAT_REQUESTS.clear()
+    with make_client(tmp_path, think=True, think_budget=1000, num_ctx=4096) as c:
+        upload(c, fixtures / "vi_sample.pdf")
+        ev = ask(c, "Mỗi gốc cà phê cần bao nhiêu lít nước cho một lần tưới?")
+    kinds = [e for e, _ in ev]
+    assert kinds[-1] == "done"
+    assert "".join(d["text"] for e, d in ev if e == "thinking") == fake_ollama.THINKING
+    assert "Theo tài liệu" in "".join(d["text"] for e, d in ev if e == "token")
+    stages = [d["stage"] for e, d in ev if e == "status"]
+    assert stages.index("thinking") < stages.index("writing", stages.index("thinking"))
+    assert kinds.index("thinking") < kinds.index("token")
+    req = fake_ollama.CHAT_REQUESTS[-1]
+    assert req["think"] is True and req["options"]["num_predict"] == 1800 and req["options"]["num_ctx"] == 5096
+
+
+def test_helper_llm_calls_never_think(tmp_path):
+    import asyncio
+
+    fake_ollama.CHAT_REQUESTS.clear()
+    s = replace(Settings(), think=True)
+    oc = OllamaClient(s, transport=httpx.ASGITransport(app=fake_ollama.app))
+    asyncio.run(oc.chat([{"role": "user", "content": "hi"}]))
+    assert fake_ollama.CHAT_REQUESTS[-1]["think"] is False
 
 
 def test_chat_english_doc(client, fixtures):

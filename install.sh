@@ -12,7 +12,6 @@
 #   DOCQA_REPO         địa chỉ git (mặc định https://github.com/tuanpq-dev/docqa.git)
 #   DOCQA_BRANCH       nhánh (mặc định main)
 #   DOCQA_NO_UPDATE=1  không git pull khi đã có sẵn
-#   DOCQA_MODEL (hoặc DOCQA_LLM_MODEL), DOCQA_EMBED_MODEL   đổi model (được ghi vào .env để app dùng đúng model này)
 #   DOCQA_OLLAMA_URL   dùng Ollama ở địa chỉ khác (khi đó không cài Ollama trên máy này)
 #   DOCQA_DRYRUN=1     giống --dry-run
 #
@@ -24,8 +23,6 @@ main() {
   local DOCQA_REPO="${DOCQA_REPO:-https://github.com/tuanpq-dev/docqa.git}"
   local DOCQA_BRANCH="${DOCQA_BRANCH:-main}"
   local DRY_RUN="${DOCQA_DRYRUN:-${DOCQA_DRY_RUN:-0}}"
-  # DOCQA_MODEL là tên ngắn (giống install.ps1); app đọc DOCQA_LLM_MODEL
-  if [ -n "${DOCQA_MODEL:-}" ]; then export DOCQA_LLM_MODEL="$DOCQA_MODEL"; fi
   local PY_MIN="3.10"
   local DISK_APP_MB=1500      # .venv + thư viện (~600 MB) có dư
   local DISK_OLLAMA_MB=4000   # Ollama cho Linux kèm thư viện GPU khá nặng
@@ -173,21 +170,6 @@ main() {
       else "$VPY" "$DIR/scripts/install_helper.py" set-env "$key" "${!key}"; ok "đã ghi $key=${!key} vào .env"; fi
     fi
   done
-  # Máy RAM < 12 GB: dùng qwen2.5:3b thay qwen3.5:4b – chỉ khi người dùng chưa tự chọn model
-  # (DOCQA_MODEL, .env hoặc config.yaml). Tắt bằng DOCQA_AUTO_MODEL=0.
-  if [ -z "${DOCQA_LLM_MODEL:-}" ] && [ "${DOCQA_AUTO_MODEL:-1}" != 0 ]; then
-    if [ -x "$VPY" ] && [ -f "$DIR/scripts/install_helper.py" ]; then
-      local auto_out auto_rc=0 auto_flag=""
-      [ "$DRY_RUN" = 1 ] && auto_flag="--dry-run"
-      auto_out="$("$VPY" "$DIR/scripts/install_helper.py" auto-llm ${auto_flag:+"$auto_flag"})" || auto_rc=$?
-      [ -n "$auto_out" ] && say "$auto_out"
-      # dry-run không ghi .env, nên đặt tạm biến môi trường để các bước sau hiện đúng model sẽ dùng
-      if [ "$auto_rc" = 10 ] && [ "$DRY_RUN" = 1 ]; then export DOCQA_LLM_MODEL=qwen2.5:3b; fi
-    elif [ "$DRY_RUN" = 1 ]; then
-      dry "kiểm tra RAM: dưới 12 GB thì dùng qwen2.5:3b thay qwen3.5:4b"
-    fi
-  fi
-
   # Đọc cấu hình giống hệt app: config.yaml < .env < biến môi trường
   local EMBED LLM OLLAMA_URL PORT cfg
   if [ -x "$VPY" ] && cfg="$("$VPY" "$DIR/scripts/install_helper.py" config 2>/dev/null)"; then
@@ -292,7 +274,7 @@ EOF
     say "Cài đặt xong! Chạy docqa:"
     printf '\n    cd %q && ./run.sh\n\n' "$DIR"
     say "Trình duyệt sẽ mở http://localhost:$PORT  (thêm --no-browser nếu không muốn tự mở)."
-    say "Đổi model: sửa llm_model trong $DIR/config.yaml (hoặc DOCQA_LLM_MODEL trong .env) rồi chạy lại install.sh."
+    say "Đổi cấu hình: sửa $DIR/config.yaml rồi chạy lại ./run.sh."
   fi
 }
 

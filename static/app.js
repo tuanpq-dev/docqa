@@ -50,7 +50,7 @@
   state.messages.forEach((m) => { if (m.pending) { m.pending = false; m.stopped = true; } });
 
   function saveChat() {
-    const msgs = state.messages.slice(-100).map(({ pending, started, stageText, ...m }) => m);
+    const msgs = state.messages.slice(-100).map(({ pending, started, stageText, showReasoning, ...m }) => m);
     store.set(chatKey(), msgs);
   }
 
@@ -427,6 +427,7 @@
   const STAGE_TEXT = {
     rewriting: "Đang hiểu câu hỏi trong ngữ cảnh…",
     searching: "Đang tìm trong tài liệu…",
+    thinking: "Đang suy nghĩ…",
     writing: "Đang viết câu trả lời…",
   };
 
@@ -452,6 +453,14 @@
     const nSrc = m.sources?.length || 0;
     let html = "";
     if (m.rewritten) html += `<p class="rewritten">Đã hiểu câu hỏi là: <em>“${escapeHtml(m.rewritten)}”</em></p>`;
+    if (m.reasoning) {
+      // Tự mở khi đang suy nghĩ, tự gập khi bắt đầu trả lời; người dùng bấm thì giữ theo lựa chọn
+      const live = m.pending && !m.content;
+      const open = m.showReasoning ?? live;
+      html += `<div class="reasoning"><button type="button" class="reasoning-toggle" data-act="reasoning" aria-expanded="${open}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>${live ? "Đang suy nghĩ" : "Xem quá trình suy nghĩ"}</button>
+        ${open ? `<div class="reasoning-body">${escapeHtml(m.reasoning)}</div>` : ""}</div>`;
+    }
     if (m.pending && !m.content) {
       const sec = Math.round((Date.now() - (m.started || Date.now())) / 1000);
       html += `<div class="thinking"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -473,6 +482,8 @@
       </div>`;
     }
     bubble.innerHTML = html;
+    const rb = $(".reasoning-body", bubble);
+    if (rb && m.pending && !m.content) rb.scrollTop = rb.scrollHeight;
     if (m.pending && m.content) {
       // con trỏ nhấp nháy ở cuối nội dung đang stream
       const md = $(".md", bubble);
@@ -575,7 +586,8 @@
           else if (event === "sources") {
             ai.sources = data.sources; ai.queryXY = data.query_xy;
             showSources(ai);
-          } else if (event === "token") { ai.content += data.text; ai.stage = "writing"; }
+          } else if (event === "thinking") { ai.reasoning = (ai.reasoning || "") + data.text; ai.stage = "thinking"; }
+          else if (event === "token") { ai.content += data.text; ai.stage = "writing"; }
           else if (event === "done") ai.lowRelevance = !!data.low_relevance;
           else if (event === "error") ai.error = data;
           scheduleRender(ai);
@@ -671,6 +683,9 @@
     } else if (act.dataset.act === "sources") {
       openSourcesView();
       showSources(m);
+    } else if (act.dataset.act === "reasoning") {
+      m.showReasoning = act.getAttribute("aria-expanded") !== "true";
+      scheduleRender(m);
     }
   });
 

@@ -469,13 +469,33 @@ async def answer_stream(
     yield "status", {"stage": "writing", "message": "Đang viết câu trả lời…"}
     messages = build_messages(clean_query(search_q), hits, hist[-2:] if followup else [], lang,
                               parts if len(parts) > 1 else None)
+    # Phần suy nghĩ tính chung vào num_predict và num_ctx nên phải cộng thêm chỗ cho nó
+    opts = {"num_predict": 800}
+    if s.think:
+        opts = {"num_predict": 800 + s.think_budget, "num_ctx": s.num_ctx + s.think_budget}
     n_tokens = 0
+    thought = False
     try:
-        async for piece in client.chat_stream(messages, num_predict=800):
+        async for kind, piece in client.chat_stream(messages, **opts):
+            if kind == "thinking":
+                if not thought:
+                    thought = True
+                    yield "status", {"stage": "thinking", "message": "Đang suy nghĩ…"}
+                yield "thinking", {"text": piece}
+                continue
+            if thought and n_tokens == 0:
+                yield "status", {"stage": "writing", "message": "Đang viết câu trả lời…"}
             n_tokens += 1
             yield "token", {"text": piece}
     except OllamaError as e:
         yield "error", e.to_dict()
+        return
+    if n_tokens == 0 and thought:
+        yield "error", {
+            "code": "empty_answer",
+            "message": "Mô hình suy nghĩ quá lâu nên hết lượt trước khi kịp trả lời.",
+            "hint": "Tăng think_budget trong config.yaml, hỏi câu ngắn gọn hơn, hoặc tắt think.",
+        }
         return
     if n_tokens == 0:
         yield "error", {

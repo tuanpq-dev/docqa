@@ -6,8 +6,8 @@
 #     --add-host=host.docker.internal:host-gateway \
 #     -v docqa-data:/data docqa
 #
-# Đổi model / Ollama URL bằng biến môi trường DOCQA_*, ví dụ:
-#   -e DOCQA_OLLAMA_URL=http://ollama:11434 -e DOCQA_LLM_MODEL=qwen2.5:7b
+# Đổi cấu hình bằng biến môi trường DOCQA_*, ví dụ:
+#   -e DOCQA_OLLAMA_URL=http://ollama:11434 -e DOCQA_THINK=true
 
 # ---------- build: cài thư viện vào venv ----------
 FROM python:3.12-slim AS builder
