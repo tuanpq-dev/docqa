@@ -13,6 +13,8 @@ think: false              # tắt chế độ "suy nghĩ" của các model Qwen3
 num_ctx: 4096             # cửa sổ ngữ cảnh gửi cho LLM
 num_gpu: 0                # 0 = chỉ dùng CPU (khuyên dùng cho laptop: GPU rời nhỏ/driver NVK/iGPU thường CHẬM hơn
                           #     và hay hết bộ nhớ). -1 = để Ollama tự quyết. Số dương = số layer đưa lên GPU.
+num_thread: 0             # số luồng CPU cho Ollama. 0 = để Ollama tự quyết (thường dùng hết luồng).
+                          #     Đặt = số nhân thật (vd 4 cho i7 4 nhân/8 luồng): nhanh bằng mà chỉ tốn nửa CPU.
 temperature: 0.2
 
 # Thời gian chờ (giây)
